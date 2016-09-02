@@ -26,6 +26,12 @@ metadata {
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0702, 0B05", outClusters: "0003, 000A, 0019", manufacturer: "Jasco Products", model: "45853", deviceJoinName: "GE ZigBee Plug-In Switch"
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0702, 0B05", outClusters: "000A, 0019", manufacturer: "Jasco Products", model: "45856", deviceJoinName: "GE ZigBee In-Wall Switch"
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 000F, 0B04", outClusters: "0019", manufacturer: "SmartThings", model: "outletv4", deviceJoinName: "Outlet"
+    }    
+    
+	preferences {
+		input "minInterval", "number", title: "Minimum report interval (seconds)", description: "Minimum power report interval, in seconds", range: "1..300", defaultValue: 1, displayDuringSetup: false
+		input "maxInterval", "number", title: "Maximum report interval (seconds)", description: "Maximum power report interval, in seconds", range: "60..600", defaultValue: 600, displayDuringSetup: false
+		input "minChange", "decimal", title: "Report change threshold (W)", description: "Minimum power change to send a report, in watts", range: "0..1500", defaultValue: 1.0, displayDuringSetup: false
     }
 
     tiles(scale: 2) {
@@ -43,8 +49,11 @@ metadata {
         standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
+		standardTile("configure", "device.configure", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+            state "default", label:"", action:"configuration.configure", icon:"st.secondary.configure"
+        }
         main "switch"
-        details(["switch", "refresh"])
+        details(["switch", "refresh", "configure"])
     }
 }
 
@@ -68,6 +77,14 @@ def parse(String description) {
     }
 }
 
+def updated() {
+	initialize()
+}
+
+def initialize() {
+	this.configure()
+}
+
 def off() {
     zigbee.off()
 }
@@ -77,10 +94,10 @@ def on() {
 }
 
 def refresh() {
-    zigbee.onOffRefresh() + zigbee.simpleMeteringPowerRefresh() + zigbee.electricMeasurementPowerRefresh() + zigbee.onOffConfig() + zigbee.simpleMeteringPowerConfig() + zigbee.electricMeasurementPowerConfig()
+    zigbee.onOffRefresh() + zigbee.simpleMeteringPowerRefresh() + zigbee.electricMeasurementPowerRefresh()
 }
 
 def configure() {
     log.debug "Configuring Reporting and Bindings."
-    zigbee.onOffConfig() + zigbee.simpleMeteringPowerConfig() + zigbee.electricMeasurementPowerConfig() + zigbee.onOffRefresh() + zigbee.simpleMeteringPowerRefresh() + zigbee.electricMeasurementPowerRefresh()
+    zigbee.onOffConfig() + zigbee.simpleMeteringPowerConfig() + zigbee.electricMeasurementPowerConfig(minInterval ?: 1, maxInterval ?: 600, minChange ? (int) Math.round(minChange * 10) : 10) + zigbee.onOffRefresh() + zigbee.simpleMeteringPowerRefresh() + zigbee.electricMeasurementPowerRefresh()
 }
